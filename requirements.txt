@@ -5,4 +5,4 @@ matplotlib
 joblib
 # Replace the version below with the one printed in notebook section 14,
 # otherwise the pickled model may fail to load.
-scikit-learn==REPLACE_WITH_COLAB_VERSION
+scikit-learn==1.6.1
