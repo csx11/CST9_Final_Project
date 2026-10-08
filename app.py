@@ -12,7 +12,7 @@ import streamlit as st
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
 # --------------------------------------------------------------- configuration
-ACCENT = "#1F4E79"
+ACCENT = "#2F6FAF"  # mid blue: readable on both light and dark backgrounds
 MODEL_DIR = Path(__file__).parent / "model"
 AUTHORS = ""  # e.g. "Juan Dela Cruz, Maria Santos"  (leave empty to hide the byline)
 
@@ -24,19 +24,21 @@ st.markdown(
 <style>
 [data-testid="stSidebar"], [data-testid="collapsedControl"] {{display:none;}}
 .block-container {{max-width: 980px; padding-top: 2.2rem; padding-bottom: 3rem;}}
+/* Text colors are inherited from the active theme (light or dark); only the accent is fixed. */
 h1, h2, h3 {{font-family: Georgia, 'Times New Roman', serif; color: {ACCENT}; font-weight: 600;}}
 h2 {{margin-top: 1.6rem;}}
 .hero {{border-bottom: 3px solid {ACCENT}; padding-bottom: 1.1rem; margin-bottom: 1.2rem;}}
-.hero .kicker {{text-transform: uppercase; letter-spacing: .09em; font-size: .74rem; color: #6b7280; margin-bottom:.3rem;}}
+.hero .kicker {{text-transform: uppercase; letter-spacing: .09em; font-size: .74rem; opacity: .65; margin-bottom:.3rem;}}
 .hero h1 {{margin: 0; font-size: 2.15rem; line-height: 1.2;}}
-.hero .sub {{color: #4b5563; font-size: 1.05rem; margin-top: .45rem;}}
-.hero .by {{color: #6b7280; font-size: .88rem; margin-top: .5rem;}}
-div[data-testid="stMetric"] {{background: #F5F7FA; border: 1px solid #E3E8EF; border-left: 4px solid {ACCENT};
-    border-radius: 6px; padding: .75rem 1rem;}}
-div[data-testid="stMetricLabel"] p {{font-size: .82rem; color: #52606d;}}
-.callout {{background: #F5F7FA; border-left: 4px solid {ACCENT}; padding: .9rem 1.15rem; border-radius: 4px; margin: .6rem 0 1rem 0;}}
+.hero .sub {{opacity: .8; font-size: 1.05rem; margin-top: .45rem;}}
+.hero .by {{opacity: .65; font-size: .88rem; margin-top: .5rem;}}
+div[data-testid="stMetric"] {{background: rgba(127,127,127,.08); border: 1px solid rgba(127,127,127,.25);
+    border-left: 4px solid {ACCENT}; border-radius: 6px; padding: .75rem 1rem;}}
+div[data-testid="stMetricLabel"] p {{font-size: .82rem; opacity: .75;}}
+.callout {{background: rgba(47,111,175,.10); border-left: 4px solid {ACCENT}; padding: .9rem 1.15rem;
+    border-radius: 4px; margin: .6rem 0 1rem 0;}}
 .callout b.t {{color: {ACCENT};}}
-.small {{color: #6b7280; font-size: .85rem;}}
+.small {{opacity: .7; font-size: .85rem;}}
 button[data-baseweb="tab"] p {{font-size: .95rem; font-weight: 500;}}
 footer {{visibility: hidden;}}
 </style>
