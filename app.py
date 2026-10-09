@@ -46,12 +46,6 @@ footer {{visibility: hidden;}}
     unsafe_allow_html=True,
 )
 
-st.set_page_config(
-    page_title="My Dashboard",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
 # --------------------------------------------------------------------- loading
 @st.cache_resource
 def load_artifacts():
@@ -420,29 +414,53 @@ def manual_entry():
 
 def csv_upload():
     st.write(
-        "Upload a CSV containing the raw UNSW-NB15 feature columns, in the same format as the dataset's "
-        "files. `id`, `attack_cat` and `label` are optional; if `label` is present, accuracy is reported."
+        "Upload a CSV containing the raw UNSW-NB15 feature columns. "
+        "`id`, `attack_cat`, and `label` are optional; if `label` is present, metrics are reported."
     )
-    st.download_button("Download a sample CSV to try", load_csv("sample_input.csv").to_csv(index=False).encode(),
-                       "sample_input.csv", "text/csv")
+
+    st.download_button(
+        "Download a sample CSV to try",
+        data=load_csv("sample_input.csv").to_csv(index=False).encode("utf-8"),
+        file_name="sample_input.csv",
+        mime="application/octet-stream",
+    )
+
     uploaded_file = st.file_uploader(
-    "Upload Network Traffic CSV",
-    type=None,
-    accept_multiple_files=False
-)
+        "Upload Network Traffic CSV",
+        type=None,  # Avoid Android file-picker MIME filtering problems.
+        accept_multiple_files=False,
+        key="network_csv_upload",
+    )
+    if uploaded_file is None:
+        st.info("Select a CSV file to classify network traffic.")
+        return
 
-if uploaded_file is not None:
     if not uploaded_file.name.lower().endswith(".csv"):
-        st.error("Please select a CSV file.")
-    else:
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.success("CSV uploaded successfully!")
-            st.dataframe(df.head())
-        except Exception as e:
-            st.error(f"Unable to read CSV: {e}")
+        st.error("Please select a .csv file.")
+        return
 
-    pred, prob = predict(data)
+    try:
+        data = pd.read_csv(uploaded_file)
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError, ValueError) as exc:
+        st.error(f"Unable to read CSV: {exc}")
+        return
+
+    if data.empty:
+        st.error("The CSV contains no records.")
+        return
+
+    missing = [column for column in meta["columns"] if column not in data.columns]
+    if missing:
+        st.error("Missing required feature columns: " + ", ".join(missing))
+        return
+
+    try:
+        pred, prob = predict(data)
+    except (ValueError, TypeError, KeyError) as exc:
+        st.error(f"Could not classify these records: {exc}")
+        return
+
+    st.success(f"CSV uploaded and {len(data):,} records classified successfully!")
     out = data.copy()
     out["predicted_label"] = pred
     out["attack_probability"] = prob.round(4)
@@ -453,15 +471,25 @@ if uploaded_file is not None:
     c[2].metric("Predicted normal", f"{int((pred == 0).sum()):,}")
 
     if "label" in data.columns:
-        y = data["label"].astype(int)
-        t_n, f_p, f_n, t_p = confusion_matrix(y, pred, labels=[0, 1]).ravel()
-        m = st.columns(3)
-        m[0].metric("Accuracy", f"{accuracy_score(y, pred):.2%}")
-        m[1].metric("F1-score", f"{f1_score(y, pred):.3f}")
-        m[2].metric("False positive rate", f"{f_p / (f_p + t_n):.2%}" if (f_p + t_n) else "n/a")
+        try:
+            y = data["label"].astype(int)
+            if not y.isin([0, 1]).all():
+                raise ValueError("Labels must be 0 (Normal) or 1 (Attack).")
+            tn, fp, fn, tp = confusion_matrix(y, pred, labels=[0, 1]).ravel()
+            m = st.columns(3)
+            m[0].metric("Accuracy", f"{accuracy_score(y, pred):.2%}")
+            m[1].metric("F1-score", f"{f1_score(y, pred, zero_division=0):.3f}")
+            m[2].metric("False positive rate", f"{fp / (fp + tn):.2%}" if fp + tn else "n/a")
+        except (ValueError, TypeError) as exc:
+            st.warning(f"Predictions completed, but label metrics could not be calculated: {exc}")
 
     st.dataframe(out.head(200), width="stretch")
-    st.download_button("Download predictions", out.to_csv(index=False).encode(), "predictions.csv", "text/csv")
+    st.download_button(
+        "Download predictions",
+        data=out.to_csv(index=False).encode("utf-8"),
+        file_name="predictions.csv",
+        mime="text/csv",
+    )
 
 
 with tabs[3]:
