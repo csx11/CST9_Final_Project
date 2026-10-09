@@ -425,14 +425,22 @@ def csv_upload():
     )
     st.download_button("Download a sample CSV to try", load_csv("sample_input.csv").to_csv(index=False).encode(),
                        "sample_input.csv", "text/csv")
-    file = st.file_uploader("Upload traffic records (CSV)", type="csv")
-    if file is None:
-        return
-    data = pd.read_csv(file)
-    missing = [c for c in meta["columns"] if c not in data.columns]
-    if missing:
-        st.error(f"Missing columns: {missing}")
-        return
+    uploaded_file = st.file_uploader(
+    "Upload Network Traffic CSV",
+    type=None,
+    accept_multiple_files=False
+)
+
+if uploaded_file is not None:
+    if not uploaded_file.name.lower().endswith(".csv"):
+        st.error("Please select a CSV file.")
+    else:
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.success("CSV uploaded successfully!")
+            st.dataframe(df.head())
+        except Exception as e:
+            st.error(f"Unable to read CSV: {e}")
 
     pred, prob = predict(data)
     out = data.copy()
