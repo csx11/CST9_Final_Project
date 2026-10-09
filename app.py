@@ -210,7 +210,6 @@ traffic in the UNSW-NB15 dataset.
 - **Task:** binary classification only (Normal = 0, Attack = 1). The nine attack families are not predicted individually.
 - **Data:** the official UNSW-NB15 training and testing partitions; no live traffic capture.
 - **Algorithm:** Random Forest only.
-- **Use:** an academic demonstration, not a production security tool.
 """
     )
 
