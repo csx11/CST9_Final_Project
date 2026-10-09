@@ -178,11 +178,6 @@ with tabs[0]:
     c[2].metric("Features used", f"{k_sel} of {n_encoded}")
     c[3].metric("Test recall", f"{tm['Recall']:.1%}")
 
-    st.subheader("Attack type breakdown")
-    st.caption(f"Attack records per category in the training partition "
-               f"({ov['attack_types']} attack types; the remaining records are normal traffic).")
-    st.pyplot(attack_fig())
-
     st.header("Project overview")
     st.write(
         "Computer networks are constantly exposed to malicious activity, and intrusion detection systems "
