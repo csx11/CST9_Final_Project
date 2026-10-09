@@ -22,7 +22,7 @@ st.markdown(
     f"""
 <style>
 [data-testid="stSidebar"], [data-testid="collapsedControl"] {{display:none;}}
-.block-container {{max-width: 980px; padding-top: 2.2rem; padding-bottom: 3rem;}}
+.block-container {{max-width: 980px; padding-top: 4rem; padding-bottom: 3rem;}}
 /* Text colors are inherited from the active theme (light or dark); only the accent is fixed. */
 h1, h2, h3 {{font-family: Georgia, 'Times New Roman', serif; color: {ACCENT}; font-weight: 600;}}
 h2 {{margin-top: 1.6rem;}}
