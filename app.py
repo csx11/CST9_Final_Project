@@ -393,49 +393,101 @@ def manual_entry():
 
 def csv_upload():
     st.write(
-        "Upload a CSV containing the raw UNSW-NB15 feature columns, in the same format as the dataset's "
-        "files. `id`, `attack_cat` and `label` are optional; if `label` is present, accuracy is reported."
+        "Upload a CSV containing the raw UNSW-NB15 feature columns. "
+        "The columns id, attack_cat, and label are optional."
     )
-    st.download_button("Download a sample CSV to try", load_csv("sample_input.csv").to_csv(index=False).encode(),
-                       "sample_input.csv", "text/csv")
-    file = st.file_uploader("Upload traffic records (CSV)", type="csv")
-    if file is None:
+
+    sample = load_csv("sample_input.csv")
+
+    st.download_button(
+        "Download Sample CSV",
+        data=sample.to_csv(index=False).encode("utf-8"),
+        file_name="sample_input.csv",
+        mime="application/octet-stream"
+    )
+
+    uploaded_file = st.file_uploader(
+        "Upload Network Traffic CSV",
+        type=None,
+        accept_multiple_files=False,
+        key="network_csv"
+    )
+
+    if uploaded_file is None:
+        st.info("Select a CSV file to begin.")
         return
-    data = pd.read_csv(file)
-    missing = [c for c in meta["columns"] if c not in data.columns]
-    if missing:
-        st.error(f"Missing columns: {missing}")
+
+    if not uploaded_file.name.lower().endswith(".csv"):
+        st.error("Please select a valid .csv file.")
         return
 
-    pred, prob = predict(data)
-    out = data.copy()
-    out["predicted_label"] = pred
-    out["attack_probability"] = prob.round(4)
+    try:
+        data = pd.read_csv(uploaded_file)
 
-    c = st.columns(3)
-    c[0].metric("Records", f"{len(out):,}")
-    c[1].metric("Predicted attacks", f"{int(pred.sum()):,}")
-    c[2].metric("Predicted normal", f"{int((pred == 0).sum()):,}")
+        if data.empty:
+            st.error("The uploaded CSV contains no records.")
+            return
 
-    if "label" in data.columns:
-        y = data["label"].astype(int)
-        t_n, f_p, f_n, t_p = confusion_matrix(y, pred, labels=[0, 1]).ravel()
-        m = st.columns(3)
-        m[0].metric("Accuracy", f"{accuracy_score(y, pred):.2%}")
-        m[1].metric("F1-score", f"{f1_score(y, pred):.3f}")
-        m[2].metric("False positive rate", f"{f_p / (f_p + t_n):.2%}" if (f_p + t_n) else "n/a")
-      
-    st.dataframe(out.head(200))
-    st.download_button("Download predictions", out.to_csv(index=False).encode(), "predictions.csv", "text/csv")
+        missing = [
+            col for col in meta["columns"]
+            if col not in data.columns
+        ]
 
+        if missing:
+            st.error(f"Missing required columns: {missing}")
+            return
 
-with tabs[3]:
-    st.header("Try a prediction")
-    t1, t2 = st.tabs(["Manual entry", "Upload CSV"])
-    with t1:
-        manual_entry()
-    with t2:
-        csv_upload()
+        st.success("CSV uploaded successfully!")
+
+        pred, prob = predict(data)
+
+        out = data.copy()
+        out["predicted_label"] = pred
+        out["attack_probability"] = prob.round(4)
+
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric("Records", f"{len(out):,}")
+        c2.metric("Predicted Attacks", f"{int(pred.sum()):,}")
+        c3.metric("Predicted Normal", f"{int((pred == 0).sum()):,}")
+
+        if "label" in data.columns:
+            y = data["label"].astype(int)
+
+            tn, fp, fn, tp = confusion_matrix(
+                y, pred, labels=[0, 1]
+            ).ravel()
+
+            m1, m2, m3 = st.columns(3)
+
+            m1.metric(
+                "Accuracy",
+                f"{accuracy_score(y, pred):.2%}"
+            )
+
+            m2.metric(
+                "F1-Score",
+                f"{f1_score(y, pred):.3f}"
+            )
+
+            fpr = fp / (fp + tn) if (fp + tn) else 0
+
+            m3.metric(
+                "False Positive Rate",
+                f"{fpr:.2%}"
+            )
+
+        st.dataframe(out.head(200), use_container_width=True)
+
+        st.download_button(
+            "Download Predictions",
+            data=out.to_csv(index=False).encode("utf-8"),
+            file_name="predictions.csv",
+            mime="text/csv"
+        )
+
+    except Exception as e:
+        st.error(f"Error processing CSV: {e}")
       
 # ----------------------------------------------------------------- performance
 with tabs[4]:
