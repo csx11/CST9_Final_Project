@@ -46,6 +46,35 @@ footer {{visibility: hidden;}}
     unsafe_allow_html=True,
 )
 
+st.set_page_config(
+    page_title="My Dashboard",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+st.markdown("""
+<style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    [data-testid="stHeader"] {
+        display: none;
+    }
+
+    [data-testid="stToolbar"] {
+        display: none;
+    }
+
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        max-width: 100%;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --------------------------------------------------------------------- loading
 @st.cache_resource
