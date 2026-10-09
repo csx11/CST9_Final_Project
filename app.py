@@ -1,4 +1,3 @@
-import io
 import json
 from pathlib import Path
 
@@ -23,7 +22,7 @@ st.markdown(
     f"""
 <style>
 [data-testid="stSidebar"], [data-testid="collapsedControl"] {{display:none;}}
-.block-container {{max-width: 980px; padding-top: 4rem; padding-bottom: 3rem;}}
+.block-container {{max-width: 980px; padding-top: 2.2rem; padding-bottom: 3rem;}}
 /* Text colors are inherited from the active theme (light or dark); only the accent is fixed. */
 h1, h2, h3 {{font-family: Georgia, 'Times New Roman', serif; color: {ACCENT}; font-weight: 600;}}
 h2 {{margin-top: 1.6rem;}}
@@ -45,6 +44,7 @@ footer {{visibility: hidden;}}
 """,
     unsafe_allow_html=True,
 )
+
 
 # --------------------------------------------------------------------- loading
 @st.cache_resource
@@ -90,11 +90,10 @@ def callout(title, body):
     st.markdown(f'<div class="callout"><b class="t">{title}</b><br>{body}</div>', unsafe_allow_html=True)
 
 
-def to_png(fig):
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=160, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    return buf.getvalue()
+def finish(fig):
+    fig.patch.set_facecolor("white")
+    fig.tight_layout()
+    return fig
 
 
 def tidy(ax):
@@ -105,8 +104,8 @@ def tidy(ax):
     ax.tick_params(colors="#3e4c59")
 
 
-@st.cache_data
-def cm_png():
+@st.cache_resource
+def cm_fig():
     fig, ax = plt.subplots(figsize=(4.2, 3.7))
     ax.imshow(cm, cmap="Blues")
     ax.set_xticks([0, 1], ["Normal", "Attack"])
@@ -116,11 +115,11 @@ def cm_png():
     for (i, j), v in np.ndenumerate(cm):
         ax.text(j, i, f"{v:,}", ha="center", va="center", fontsize=11,
                 color="white" if v > cm.max() / 2 else "#1f2933")
-    return to_png(fig)
+    return finish(fig)
 
 
-@st.cache_data
-def roc_png():
+@st.cache_resource
+def roc_fig():
     roc = meta["roc"]
     fig, ax = plt.subplots(figsize=(4.2, 3.7))
     ax.plot(roc["fpr"], roc["tpr"], color=ACCENT, linewidth=2, label=f"Random Forest (AUC = {tm['ROC-AUC']:.3f})")
@@ -129,21 +128,21 @@ def roc_png():
     ax.set_ylabel("True positive rate")
     ax.legend(loc="lower right", fontsize=8, frameon=False)
     tidy(ax)
-    return to_png(fig)
+    return finish(fig)
 
 
-@st.cache_data
-def importance_png():
+@st.cache_resource
+def importance_fig():
     fi = meta["feature_importance"]
     fig, ax = plt.subplots(figsize=(7.5, 3.8))
     ax.barh(fi["features"][::-1], fi["importance"][::-1], color=ACCENT)
     ax.set_xlabel("Importance (mean decrease in impurity)")
     tidy(ax)
-    return to_png(fig)
+    return finish(fig)
 
 
-@st.cache_data
-def attack_png():
+@st.cache_resource
+def attack_fig():
     s = pd.Series(ov["attack_counts"]).sort_values()
     fig, ax = plt.subplots(figsize=(7.5, 3.6))
     ax.barh(s.index, s.values, color=ACCENT)
@@ -152,7 +151,7 @@ def attack_png():
         ax.text(v, y, f" {v:,}", va="center", fontsize=8, color="#3e4c59")
     ax.set_xlim(0, s.max() * 1.15)
     tidy(ax)
-    return to_png(fig)
+    return finish(fig)
 
 
 # ---------------------------------------------------------------------- header
@@ -178,6 +177,11 @@ with tabs[0]:
     c[1].metric("Test flows", f"{ov['test_rows']:,}")
     c[2].metric("Features used", f"{k_sel} of {n_encoded}")
     c[3].metric("Test recall", f"{tm['Recall']:.1%}")
+
+    st.subheader("Attack type breakdown")
+    st.caption(f"Attack records per category in the training partition "
+               f"({ov['attack_types']} attack types; the remaining records are normal traffic).")
+    st.pyplot(attack_fig())
 
     st.header("Project overview")
     st.write(
@@ -210,6 +214,7 @@ traffic in the UNSW-NB15 dataset.
 - **Task:** binary classification only (Normal = 0, Attack = 1). The nine attack families are not predicted individually.
 - **Data:** the official UNSW-NB15 training and testing partitions; no live traffic capture.
 - **Algorithm:** Random Forest only.
+- **Use:** an academic demonstration, not a production security tool.
 """
     )
 
@@ -314,7 +319,8 @@ with tabs[2]:
     st.subheader("Attack families")
     st.write(f"The {ov['attack_types']} attack categories in the training partition are shown below. "
              "Normal traffic makes up the rest of the records.")
-    st.image(attack_png(), width="stretch")
+    counts = pd.Series(ov["attack_counts"]).sort_values(ascending=False)
+    st.dataframe(counts.rename("Training records").to_frame())
 
     st.subheader("Feature groups")
     st.markdown(
@@ -342,7 +348,7 @@ dataset also contains `attack_cat` (the attack family) and `label` (0 = normal, 
     )
 
     st.subheader("Sample of the training data")
-    st.dataframe(load_csv("sample_train.csv"), width="stretch")
+    st.dataframe(load_csv("sample_train.csv"))
 
 # ------------------------------------------------------------------ prediction
 FIELDS = {
@@ -413,53 +419,21 @@ def manual_entry():
 
 def csv_upload():
     st.write(
-        "Upload a CSV containing the raw UNSW-NB15 feature columns. "
-        "`id`, `attack_cat`, and `label` are optional; if `label` is present, metrics are reported."
+        "Upload a CSV containing the raw UNSW-NB15 feature columns, in the same format as the dataset's "
+        "files. `id`, `attack_cat` and `label` are optional; if `label` is present, accuracy is reported."
     )
-
-    st.download_button(
-        "Download a sample CSV to try",
-        data=load_csv("sample_input.csv").to_csv(index=False).encode("utf-8"),
-        file_name="sample_input.csv",
-        mime="application/octet-stream",
-    )
-
-    uploaded_file = st.file_uploader(
-        "Upload Network Traffic CSV",
-        type=None,  # Avoid Android file-picker MIME filtering problems.
-        accept_multiple_files=False,
-        key="network_csv_upload",
-    )
-    if uploaded_file is None:
-        st.info("Select a CSV file to classify network traffic.")
+    st.download_button("Download a sample CSV to try", load_csv("sample_input.csv").to_csv(index=False).encode(),
+                       "sample_input.csv", "text/csv")
+    file = st.file_uploader("Upload traffic records (CSV)", type="csv")
+    if file is None:
         return
-
-    if not uploaded_file.name.lower().endswith(".csv"):
-        st.error("Please select a .csv file.")
-        return
-
-    try:
-        data = pd.read_csv(uploaded_file)
-    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError, ValueError) as exc:
-        st.error(f"Unable to read CSV: {exc}")
-        return
-
-    if data.empty:
-        st.error("The CSV contains no records.")
-        return
-
-    missing = [column for column in meta["columns"] if column not in data.columns]
+    data = pd.read_csv(file)
+    missing = [c for c in meta["columns"] if c not in data.columns]
     if missing:
-        st.error("Missing required feature columns: " + ", ".join(missing))
+        st.error(f"Missing columns: {missing}")
         return
 
-    try:
-        pred, prob = predict(data)
-    except (ValueError, TypeError, KeyError) as exc:
-        st.error(f"Could not classify these records: {exc}")
-        return
-
-    st.success(f"CSV uploaded and {len(data):,} records classified successfully!")
+    pred, prob = predict(data)
     out = data.copy()
     out["predicted_label"] = pred
     out["attack_probability"] = prob.round(4)
@@ -470,25 +444,15 @@ def csv_upload():
     c[2].metric("Predicted normal", f"{int((pred == 0).sum()):,}")
 
     if "label" in data.columns:
-        try:
-            y = data["label"].astype(int)
-            if not y.isin([0, 1]).all():
-                raise ValueError("Labels must be 0 (Normal) or 1 (Attack).")
-            tn, fp, fn, tp = confusion_matrix(y, pred, labels=[0, 1]).ravel()
-            m = st.columns(3)
-            m[0].metric("Accuracy", f"{accuracy_score(y, pred):.2%}")
-            m[1].metric("F1-score", f"{f1_score(y, pred, zero_division=0):.3f}")
-            m[2].metric("False positive rate", f"{fp / (fp + tn):.2%}" if fp + tn else "n/a")
-        except (ValueError, TypeError) as exc:
-            st.warning(f"Predictions completed, but label metrics could not be calculated: {exc}")
+        y = data["label"].astype(int)
+        t_n, f_p, f_n, t_p = confusion_matrix(y, pred, labels=[0, 1]).ravel()
+        m = st.columns(3)
+        m[0].metric("Accuracy", f"{accuracy_score(y, pred):.2%}")
+        m[1].metric("F1-score", f"{f1_score(y, pred):.3f}")
+        m[2].metric("False positive rate", f"{f_p / (f_p + t_n):.2%}" if (f_p + t_n) else "n/a")
 
-    st.dataframe(out.head(200), width="stretch")
-    st.download_button(
-        "Download predictions",
-        data=out.to_csv(index=False).encode("utf-8"),
-        file_name="predictions.csv",
-        mime="text/csv",
-    )
+    st.dataframe(out.head(200))
+    st.download_button("Download predictions", out.to_csv(index=False).encode(), "predictions.csv", "text/csv")
 
 
 with tabs[3]:
@@ -522,20 +486,20 @@ with tabs[4]:
     left, right = st.columns(2)
     with left:
         st.subheader("Confusion matrix")
-        st.image(cm_png(), width="stretch")
+        st.pyplot(cm_fig())
     with right:
         st.subheader("ROC curve")
-        st.image(roc_png(), width="stretch")
+        st.pyplot(roc_fig())
 
     st.subheader("Feature importance")
-    st.image(importance_png(), width="stretch")
+    st.pyplot(importance_fig())
 
     st.subheader("Model comparison")
     st.caption("All three models were evaluated on the same test partition.")
-    st.dataframe(pd.DataFrame(meta["comparison"]).set_index("Model"), width="stretch")
+    st.dataframe(pd.DataFrame(meta["comparison"]).set_index("Model"))
 
     st.subheader("Sample test-set predictions")
-    st.dataframe(load_csv("sample_predictions.csv"), width="stretch")
+    st.dataframe(load_csv("sample_predictions.csv"))
 
 # ----------------------------------------------------------------------- notes
 with tabs[5]:
