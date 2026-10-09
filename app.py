@@ -424,7 +424,7 @@ def csv_upload():
         m[0].metric("Accuracy", f"{accuracy_score(y, pred):.2%}")
         m[1].metric("F1-score", f"{f1_score(y, pred):.3f}")
         m[2].metric("False positive rate", f"{f_p / (f_p + t_n):.2%}" if (f_p + t_n) else "n/a")
-
+      
     st.dataframe(out.head(200))
     st.download_button("Download predictions", out.to_csv(index=False).encode(), "predictions.csv", "text/csv")
 
@@ -436,7 +436,7 @@ with tabs[3]:
         manual_entry()
     with t2:
         csv_upload()
-
+      
 # ----------------------------------------------------------------- performance
 with tabs[4]:
     st.header("Model performance")
