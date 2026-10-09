@@ -264,27 +264,6 @@ with tabs[1]:
         "useful for understanding what separates attacks from normal traffic."
     )
 
-    st.subheader("Statement of the problem")
-    st.markdown(
-        """
-Security analysts cannot manually inspect every network flow, and an IDS that misses attacks or
-floods analysts with false alarms is of limited use. This study therefore asks:
-
-1. How accurately can a Random Forest separate normal flows from attack flows in UNSW-NB15?
-2. Can a reduced set of features keep that performance while making the model simpler and faster to train?
-3. How well do results from a validation split carry over to the official, separately provided test partition?
-"""
-    )
-
-    st.subheader("Significance of the study")
-    st.markdown(
-        """
-- **Students and researchers:** a documented, reproducible baseline for Random Forest on UNSW-NB15, including the trade-off between detecting attacks and raising false alarms.
-- **Network and security practitioners:** an illustration of why recall alone is not enough, and why false positive rate matters when alerts must be reviewed by people.
-- **Future work:** a reference point for comparing other algorithms, resampling strategies or newer datasets.
-"""
-    )
-
     st.subheader("Reference")
     st.markdown(
         '<span class="small">Moustafa, N., & Slay, J. (2015). UNSW-NB15: a comprehensive data set for network '
